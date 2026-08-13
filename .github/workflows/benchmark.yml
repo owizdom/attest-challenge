@@ -6,19 +6,56 @@ on:
     branches: [main]
   pull_request:
 
+# One run at a time. Each run pulls ~14 GB of models, and two of them racing on
+# a runner with ~14 GB free killed the machine mid-pull with no step logs.
+concurrency:
+  group: benchmark-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  score:
+  # The integrity gates need no models and finish in seconds, so they run as
+  # their own job. If the sandbox regresses, that must be visible immediately
+  # and independently of whether a 14 GB model pull succeeded.
+  integrity:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # The sandbox is not optional: harness/evaluate.py refuses to publish a
-      # score from an unconfined run.
+      # Not optional: harness/evaluate.py refuses to publish a score from an
+      # unconfined run, and the Linux path is the one that actually scores.
+      - name: Install bubblewrap
+        run: sudo apt-get update && sudo apt-get install -y bubblewrap
+
+      # The exploits that once scored 100.00 on the held-out split without
+      # reading a single transcript. None of them need a model.
+      - name: Sandbox regression tests
+        run: python3 tools/attacks.py
+
+  score:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # ubuntu-latest ships with ~14 GB free and the corpus is ~14 GB, so the
+      # pull kills the runner. These three directories are worth ~25 GB and
+      # nothing here uses them.
+      - name: Reclaim disk
+        run: |
+          df -h /
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+                      /usr/local/share/boost /usr/share/swift || true
+          sudo docker image prune -af || true
+          echo "after reclaim:"
+          df -h /
+
       - name: Install bubblewrap
         run: sudo apt-get update && sudo apt-get install -y bubblewrap
 
@@ -34,15 +71,14 @@ jobs:
           done
           echo "ollama did not come up" >&2; exit 1
 
-      # The models ARE the corpus. Cached across runs because pulling ~14GB
-      # every time would dominate the runtime.
-      # NOTE: transcripts are deliberately NOT cached across runs. The cache
-      # holds plaintext model outputs, and outputs are deterministic in
-      # (model, prompt, seed) — so anyone who can restore it can regenerate the
-      # five pinned tags locally, byte-match, and recover which (model, seed)
-      # tuples the held-out corpus used. Salting the filename does not hide the
-      # contents. Model blobs are cached; transcripts are not.
-
+      # The models ARE the corpus. Cached because pulling ~14 GB every run
+      # would dominate the runtime.
+      #
+      # NOTE: transcripts are deliberately NOT cached. The cache holds plaintext
+      # model outputs, and outputs are deterministic in (model, prompt, seed) —
+      # so anyone who can restore it can regenerate the five pinned tags
+      # locally, byte-match, and recover which (model, seed) tuples the held-out
+      # corpus used. Salting the filename does not hide the contents.
       - name: Cache model blobs
         uses: actions/cache@v4
         with:
@@ -52,9 +88,6 @@ jobs:
       - name: Setup
         run: ./setup.sh
 
-      # The held-out corpus is NOT in this repository — that is what makes it
-      # held out. It is resolved here, inside the runner, from a secret. A fork
-      # PR gets no secret and therefore no held-out score, which is correct.
       # The corpus is written to a FILE in its own step, so it is never in the
       # environment of the process that spawns the detector. On macOS a
       # sandboxed child can read its parent's environment; this keeps the same
@@ -74,14 +107,11 @@ jobs:
             echo "present=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # The exploits that once scored 100.00 without reading a transcript, and
-      # the scorer's own properties. Both run BEFORE the benchmark, because a
-      # rejected run exits non-zero — which used to skip them exactly when the
-      # shipped baseline was being scored.
-      - name: Sandbox regression tests
-        run: python3 tools/attacks.py
-
+      # Before the benchmark, because a rejected run exits non-zero — which
+      # would otherwise skip this exactly when the shipped baseline is scored.
       - name: Benchmark soundness
+        env:
+          ATTEST_HELDOUT: ${{ steps.heldout.outputs.present == 'true' && format('{0}/.attest-challenge/corpus-heldout.json', env.HOME) || '' }}
         run: python3 tools/verify.py
 
       - name: Benchmark
@@ -96,11 +126,11 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         if: always()
+        # decisions.json is NOT uploaded: it is one row per pair in
+        # seed-shuffled order, and publishing it alongside the printed seed let
+        # the base ordering be recovered.
         with:
           name: score
-          # decisions.json is NOT uploaded: it is one row per pair in
-          # seed-shuffled order, and publishing it alongside the printed seed
-          # let the base ordering be recovered.
           path: |
             score.json
             results.tsv
