@@ -5,7 +5,7 @@ mean `difflib` similarity across probes, swap called below 0.45.
 
 Those constants are not arbitrary. They were measured against three real
 providers serving qwen-2.5-7b: similarity to the true weights landed in
-[0.59, 0.69], to a 1B decoy in [0.35, 0.40]. Clean separation — for that case.
+[0.59, 0.69], to a 1B decoy in [0.35, 0.40]. Clean separation, for that case.
 
 ## What it catches
 
@@ -21,13 +21,13 @@ walks. This is tier 3 and tier 4 of the corpus, and tier 4 (fp16 vs q8) is the
 one DESIGN.md §10 openly calls possibly undetectable from behaviour alone.
 
 The mean is the problem. A requantised engine agrees with the reference on most
-prompts and disagrees sharply on a few — the ones sitting near a decision
+prompts and disagrees sharply on a few, the ones sitting near a decision
 boundary. Averaging deletes exactly the signal that matters. Look at the
 distribution, or at *which* probes disagree, rather than how much on average.
 
 **The adversarial endpoint** (tier 5) answers honestly whenever a prompt looks
 like an audit and cheaply otherwise. Every probe in the baseline pool is
-visibly a test — short, constrained, "one word only". A probe set that reads
+visibly a test, short, constrained, "one word only". A probe set that reads
 like ordinary traffic is a different attack surface entirely, and the baseline
 has none.
 
@@ -45,11 +45,11 @@ has none.
 ## Measured, 2026-08
 
 Held-out: **33.33** (t1 1/1 · t2 1/1 · t3 0/2 · t4 0/1 · t5 0/1), with **1 false
-accusation** — which is the entire budget. Dev: 83.33 with 0 false accusations.
+accusation**, which is the entire budget. Dev: 83.33 with 0 false accusations.
 
 The dev/held-out gap is the interesting part. Dev has one tier-3 pair and the
 baseline catches it; held-out has two and it catches neither. Same rule, same
-tier, opposite result — so the baseline is not "solving tier 3", it is landing
+tier, opposite result, so the baseline is not "solving tier 3", it is landing
 on the right side of a threshold by luck on one pair.
 
 ## The false positive is the same bug as the misses
@@ -59,19 +59,19 @@ against itself. Two sessions of the *same* q4 weights disagree about as much as
 q4 disagrees with q8. So the noise floor of the small quantised model is the
 size of the signal you are hunting.
 
-This is why lowering the threshold is not a strategy — it converts misses into
+This is why lowering the threshold is not a strategy, it converts misses into
 rejections. The budget is 1 and the baseline already spends it.
 
 What it suggests instead: the baseline's probes are *creative* ("a metaphor for
 doubt", "a six-word story"), and creative prompts have enormous session-to-
 session variance in a 1B model. The variance is coming from the probes, not
-from the weights. Prompts with a narrow correct answer — arithmetic at an
-awkward width, a specific factual recall, a strictly-formatted output — should
+from the weights. Prompts with a narrow correct answer, arithmetic at an
+awkward width, a specific factual recall, a strictly-formatted output, should
 collapse the null distribution while keeping the precision signal. Untested, but
 it is the first thing to try, and it would improve the false-positive rate and
 the detection rate at the same time.
 
-## The score moved 50 points on a seed change — read this before trusting a run
+## The score moved 50 points on a seed change, read this before trusting a run
 
 An earlier version of this benchmark had six swap pairs and four negatives. The
 baseline scored **33.3** on one probe seed and, on a different seed, caught five
@@ -120,7 +120,7 @@ throws away the information that distinguishes the cases. Anything you do with
 one mean is already at its ceiling.
 
 Where the separation still exists: tiers 1 and 2 sit at 0.33-0.41, clear of the
-null floor at 0.420 — narrowly. Tiers 3, 4 and 5 sit inside the null entirely.
+null floor at 0.420, narrowly. Tiers 3, 4 and 5 sit inside the null entirely.
 
 ### What this implies for where to look
 
@@ -128,7 +128,7 @@ The mean is a single number summarising 24 comparisons, and it is the *wrong*
 single number. Concretely untried:
 
 - **The distribution, not its mean.** Two sessions of one model disagree
-  *uniformly* — every probe a bit different. A requantised engine agrees closely
+  *uniformly*, every probe a bit different. A requantised engine agrees closely
   on most probes and diverges hard on a few. Same mean, very different shape.
   Variance, skew, or a count of probes below some per-probe cut all preserve
   what the mean destroys.
@@ -145,7 +145,7 @@ single number. Concretely untried:
 Tiers 3-5 use `llama3.2:1b` variants, because it is the only family here with
 fp16/q8/q4 builds that fit on the machine that generated the corpus. 1B models
 at temperature 0.7 are far noisier session-to-session than the 7B-70B models a
-real provider serves — attest-fyi measured 0.59-0.69 for true weights against
+real provider serves, attest-fyi measured 0.59-0.69 for true weights against
 live 7B endpoints, against 0.42-0.55 here. So this corpus is *harder* than
 production, and a rejected run here does not by itself mean a rule is broken in
 production. Adding quantisation variants of a larger model is the other high-
