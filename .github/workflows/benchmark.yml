@@ -51,6 +51,11 @@ jobs:
         run: python3 tools/attacks.py
 
   score:
+    # Fork PRs get no secrets, so they cannot produce a held-out score. Running
+    # this for them would pull 14 GB and spend fifteen minutes to fail on
+    # purpose, and leave a red check on every contribution. The integrity job
+    # above still runs for forks, which is the part that matters for a PR.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
