@@ -1,0 +1,55 @@
+name: sandbox-probe
+
+# Manual diagnostic. The sandbox is the load-bearing part of this benchmark and
+# it behaves differently on every host, so there is a way to ask the runner
+# directly rather than guess from a failed scoring run.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y bubblewrap
+
+      - name: Host facts
+        run: |
+          echo "bwrap:      $(bwrap --version)"
+          echo "setuid:     $(ls -l "$(command -v bwrap)")"
+          echo "userns_clone:            $(cat /proc/sys/kernel/unprivileged_userns_clone 2>/dev/null || echo n/a)"
+          echo "max_user_namespaces:     $(cat /proc/sys/user/max_user_namespaces 2>/dev/null || echo n/a)"
+          echo "apparmor_restrict_userns:$(cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns 2>/dev/null || echo n/a)"
+          echo "whoami: $(id)"
+
+      - name: bwrap variants
+        run: |
+          B="--ro-bind /usr /usr --ro-bind-try /lib /lib --ro-bind-try /lib64 /lib64 --proc /proc --dev /dev"
+          try () { printf '%-46s ' "$1"; shift; "$@" >/dev/null 2>/tmp/e && echo OK || echo "FAIL: $(head -1 /tmp/e)"; }
+          try "unshare-all"              bwrap --unshare-all --die-with-parent $B /usr/bin/python3 -c "print(1)"
+          try "unshare-all --share-net"  bwrap --unshare-all --share-net --die-with-parent $B /usr/bin/python3 -c "print(1)"
+          try "all-but-net"              bwrap --unshare-user --unshare-ipc --unshare-pid --unshare-uts --unshare-cgroup --die-with-parent $B /usr/bin/python3 -c "print(1)"
+          try "unshare-net alone"        bwrap --unshare-net --die-with-parent $B /usr/bin/python3 -c "print(1)"
+          echo "--- can 'all-but-net' still reach the network? ---"
+          bwrap --unshare-user --unshare-ipc --unshare-pid --unshare-uts --unshare-cgroup --die-with-parent $B /usr/bin/python3 -c "
+import socket
+try:
+    socket.create_connection(('127.0.0.1',11434),timeout=2); print('REACHABLE')
+except Exception as e: print('blocked:', type(e).__name__)"
+
+      - name: Does the harness sandbox start?
+        run: |
+          python3 - <<'PY'
+          import sys, os, json, subprocess, tempfile
+          sys.path.insert(0, os.getcwd())
+          from harness import run
+          print("flavour:", run.sandbox_flavour())
+          with tempfile.TemporaryDirectory() as t:
+              work = run._prepare_scratch(t)
+              p = subprocess.run(run._sandbox_cmd("probes", work),
+                                 input=json.dumps({"seed":1,"k":2,"history":[]}),
+                                 capture_output=True, text=True, cwd=work,
+                                 env=run._child_env(work), timeout=120)
+              print("rc:", p.returncode, "| stderr:", p.stderr.strip()[:200])
+          PY
