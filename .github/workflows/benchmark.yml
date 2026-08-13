@@ -13,17 +13,21 @@ permissions:
   contents: read
   actions: read
 
-# One run at a time. Each run pulls ~14 GB of models, and two of them racing on
-# a runner with ~14 GB free killed the machine mid-pull with no step logs.
-concurrency:
-  group: benchmark-${{ github.ref }}
-  cancel-in-progress: true
+# Deliberately NOT a workflow-level group. A workflow-level group made a
+# dispatched scoring run cancel the push-triggered integrity run on the same
+# ref, so the cheap gate went red-by-cancellation whenever the expensive one
+# started. Each job gets its own group below; scoring still serialises, because
+# two runs each pulling ~14 GB onto a runner with ~14 GB free killed the machine
+# mid-pull with no step logs.
 
 jobs:
   # The integrity gates need no models and finish in seconds, so they run as
   # their own job. If the sandbox regresses, that must be visible immediately
   # and independently of whether a 14 GB model pull succeeded.
   integrity:
+    concurrency:
+      group: integrity-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -66,6 +70,9 @@ jobs:
     # and re-running would spend another hour of model inference to reproduce a
     # number Yukon already has.
     if: github.event_name == 'workflow_dispatch'
+    concurrency:
+      group: score-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
