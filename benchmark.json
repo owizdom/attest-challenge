@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "name": "attest-challenge",
+  "description": "Detect model substitution in confidential inference: catch an endpoint serving a different, distilled or requantised engine than the model it claims. Scored as the share of substitutions caught, with false accusations rejecting the run.",
+  "category": "python",
+  "direction": "+",
+  "editablePaths": ["detector"],
+  "setupCommand": ["bash", "-lc", "./setup.sh"],
+  "benchmarkCommand": ["bash", "-lc", "./benchmark.sh"],
+  "scorePath": "score.json",
+  "maxSubmissionBytes": 8388608,
+  "runner": {
+    "provider": "github-actions",
+    "workflow": "benchmark.yml"
+  }
+}
