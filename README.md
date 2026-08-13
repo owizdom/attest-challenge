@@ -120,12 +120,18 @@ a trusted score at all.
 The baseline in `detector/` is attest-fyi's shipped production rule, ported
 unchanged: mean `difflib` similarity across 24 probes, swap called below 0.45.
 
-| Split | Score | TPR | Caught | False accusations | Budget |
-|---|---|---|---|---|---|
-| dev | **0.00, rejected** | 90.91 | 10/11 | **3** of 6 | 1 |
-| heldout | **0.00, rejected** | 78.57 | 11/14 | **4** of 8 | 1 |
+| Split | Score | TPR | Caught | False accusations | Budget | Where |
+|---|---|---|---|---|---|---|
+| heldout | **0.00, rejected** | 85.71 | 12/14 | **4** of 8 | 1 | CI, Linux, bubblewrap |
+| dev | **0.00, rejected** | 90.91 | 10/11 | **3** of 6 | 1 | macOS, sandbox-exec |
 
-Per tier, held-out: **t1 3/3 · t2 3/3 · t3 2/3 · t4 2/3 · t5 1/2**.
+Per tier, held-out: **t1 3/3 · t2 3/3 · t3 3/3 · t4 2/3 · t5 1/2**.
+
+The held-out row is the canonical one, because it comes from the scoring path,
+which is Linux under bubblewrap. The same detector on the same corpus scored
+78.57 on macOS. Determinism holds **per machine**, and `tools/verify.py` checks
+exactly that, but inference is not bit-identical across hardware, so a score is
+only comparable to another score from the same runner.
 
 Read that table twice, because it is the whole challenge. The rule finds most of
 the substitutions. It also accuses **half the honest providers**, so the run is
