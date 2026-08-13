@@ -1,10 +1,17 @@
 name: benchmark
 
+# workflow_dispatch is what Yukon uses: it opens a PR as the public record and
+# then dispatches this workflow on the submission branch. The author guide warns
+# against a `pull_request` trigger for exactly that reason — it double-runs every
+# submission — so there isn't one.
 on:
   workflow_dispatch:
   push:
     branches: [main]
-  pull_request:
+
+permissions:
+  contents: read
+  actions: read
 
 # One run at a time. Each run pulls ~14 GB of models, and two of them racing on
 # a runner with ~14 GB free killed the machine mid-pull with no step logs.
@@ -20,7 +27,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -51,15 +61,18 @@ jobs:
         run: python3 tools/attacks.py
 
   score:
-    # Fork PRs get no secrets, so they cannot produce a held-out score. Running
-    # this for them would pull 14 GB and spend fifteen minutes to fail on
-    # purpose, and leave a red check on every contribution. The integrity job
-    # above still runs for forks, which is the part that matters for a PR.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    # Dispatch only. Yukon dispatches this on each submission branch; a plain
+    # push to main is usually a promotion of a commit that was already scored,
+    # and re-running would spend another hour of model inference to reproduce a
+    # number Yukon already has.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -161,13 +174,14 @@ jobs:
           fi
           ATTEST_HELDOUT="$HOME/.attest-challenge/corpus-heldout.json" ./benchmark.sh
 
-      - uses: actions/upload-artifact@v4
+      # Yukon downloads this and reads `scorePath` out of it. decisions.json is
+      # NOT uploaded: it is one row per pair in seed-shuffled order, and
+      # publishing it alongside the printed seed let the base ordering be
+      # recovered.
+      - name: Upload score
         if: always()
-        # decisions.json is NOT uploaded: it is one row per pair in
-        # seed-shuffled order, and publishing it alongside the printed seed let
-        # the base ordering be recovered.
+        uses: actions/upload-artifact@v4
         with:
-          name: score
-          path: |
-            score.json
-            results.tsv
+          name: benchmark-score
+          path: score.json
+          if-no-files-found: error

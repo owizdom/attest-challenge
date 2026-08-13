@@ -171,7 +171,12 @@ def main() -> int:
             % (fp, budget),
             file=sys.stderr,
         )
-        return 1
+    # Exit 0 either way. A rejected detector is a VALID measurement of an
+    # invalid submission — it scores 0 and Yukon closes the PR — whereas a
+    # nonzero exit means "this benchmark could not produce a trusted score at
+    # all", which is what the failure paths above (unconfined run, missing or
+    # duplicate decisions, wrong corpus config) return. Conflating the two would
+    # report every flag-everything submission as a broken benchmark.
     return 0
 
 

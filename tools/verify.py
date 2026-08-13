@@ -70,10 +70,14 @@ def gate_check():
             body = json.load(open("score.json"))
         finally:
             os.chdir(cwd)
-    check("flag-everything is REJECTED", rc != 0 and body["score"] == 0.0,
-          "tpr=%.0f, %d false accusations, budget %d, score=%.0f"
+    # The property is the SCORE, not the exit code. A rejected detector is a
+    # valid measurement of an invalid submission: it scores 0 and exits clean,
+    # so the platform records "scored 0" rather than "benchmark broken". The
+    # untrustworthy paths below are the ones that must exit nonzero.
+    check("flag-everything is REJECTED", body["score"] == 0.0 and body["metrics"]["rejected"],
+          "tpr=%.0f, %d false accusations, budget %d, score=%.0f, exit=%d"
           % (body["metrics"]["true_positive_rate"], body["metrics"]["false_accusations"],
-             body["metrics"]["false_accusation_budget"], body["score"]))
+             body["metrics"]["false_accusation_budget"], body["score"], rc))
     check("  ...and it had a perfect TPR", body["metrics"]["true_positive_rate"] == 100.0)
 
 
