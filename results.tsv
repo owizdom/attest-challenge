@@ -1,0 +1,5 @@
+detector	config	split	score	tpr	fpr	caught	missed	false_acc
+a4d129748d483b05	daccb1a3	dev	0.00	90.91	50.00	10	1	3
+a4d129748d483b05	13034da6	heldout	0.00	78.57	50.00	11	3	4
+a4d129748d483b05	daccb1a3	dev	0.00	90.91	50.00	10	1	3
+a4d129748d483b05	13034da6	heldout	0.00	78.57	50.00	11	3	4
