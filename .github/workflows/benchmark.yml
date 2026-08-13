@@ -1,0 +1,106 @@
+name: benchmark
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # The sandbox is not optional: harness/evaluate.py refuses to publish a
+      # score from an unconfined run.
+      - name: Install bubblewrap
+        run: sudo apt-get update && sudo apt-get install -y bubblewrap
+
+      - name: Install Ollama
+        run: curl -fsSL https://ollama.com/install.sh | sh
+
+      - name: Start Ollama
+        run: |
+          ollama serve &
+          for _ in $(seq 1 30); do
+            curl -sf http://localhost:11434/api/tags >/dev/null && exit 0
+            sleep 2
+          done
+          echo "ollama did not come up" >&2; exit 1
+
+      # The models ARE the corpus. Cached across runs because pulling ~14GB
+      # every time would dominate the runtime.
+      # NOTE: transcripts are deliberately NOT cached across runs. The cache
+      # holds plaintext model outputs, and outputs are deterministic in
+      # (model, prompt, seed) — so anyone who can restore it can regenerate the
+      # five pinned tags locally, byte-match, and recover which (model, seed)
+      # tuples the held-out corpus used. Salting the filename does not hide the
+      # contents. Model blobs are cached; transcripts are not.
+
+      - name: Cache model blobs
+        uses: actions/cache@v4
+        with:
+          path: ~/.ollama/models
+          key: ollama-${{ hashFiles('harness/corpus.py') }}
+
+      - name: Setup
+        run: ./setup.sh
+
+      # The held-out corpus is NOT in this repository — that is what makes it
+      # held out. It is resolved here, inside the runner, from a secret. A fork
+      # PR gets no secret and therefore no held-out score, which is correct.
+      # The corpus is written to a FILE in its own step, so it is never in the
+      # environment of the process that spawns the detector. On macOS a
+      # sandboxed child can read its parent's environment; this keeps the same
+      # invariant on every platform.
+      - name: Materialise the held-out corpus
+        id: heldout
+        env:
+          HELDOUT_B64: ${{ secrets.ATTEST_HELDOUT_B64 }}
+        run: |
+          if [ -z "${HELDOUT_B64:-}" ]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No held-out corpus (fork PR or missing secret)."
+          else
+            mkdir -p "$HOME/.attest-challenge"
+            printf '%s' "$HELDOUT_B64" | base64 -d > "$HOME/.attest-challenge/corpus-heldout.json"
+            chmod 600 "$HOME/.attest-challenge/corpus-heldout.json"
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The exploits that once scored 100.00 without reading a transcript, and
+      # the scorer's own properties. Both run BEFORE the benchmark, because a
+      # rejected run exits non-zero — which used to skip them exactly when the
+      # shipped baseline was being scored.
+      - name: Sandbox regression tests
+        run: python3 tools/attacks.py
+
+      - name: Benchmark soundness
+        run: python3 tools/verify.py
+
+      - name: Benchmark
+        run: |
+          if [ "${{ steps.heldout.outputs.present }}" != "true" ]; then
+            echo "::error::No held-out corpus available. A dev-split score is not a" \
+                 "benchmark result — the dev labels ship in this repository."
+            ./benchmark.sh --split dev || true
+            exit 1
+          fi
+          ATTEST_HELDOUT="$HOME/.attest-challenge/corpus-heldout.json" ./benchmark.sh
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: score
+          # decisions.json is NOT uploaded: it is one row per pair in
+          # seed-shuffled order, and publishing it alongside the printed seed
+          # let the base ordering be recovered.
+          path: |
+            score.json
+            results.tsv
