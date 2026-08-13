@@ -30,6 +30,21 @@ jobs:
       - name: Install bubblewrap
         run: sudo apt-get update && sudo apt-get install -y bubblewrap
 
+      # GitHub's Ubuntu images set kernel.apparmor_restrict_unprivileged_userns=1,
+      # which lets bubblewrap create the namespace but then refuses the loopback
+      # setup inside it — `bwrap: loopback: Failed RTM_NEWADDR: Operation not
+      # permitted`, which is fatal and took down every sandboxed phase. Relaxing
+      # it on the runner is the documented fix and costs nothing here: the
+      # runner is ephemeral and exists to run this one job.
+      - name: Allow unprivileged user namespaces
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          bwrap --unshare-all --die-with-parent --ro-bind /usr /usr \
+                --ro-bind-try /lib /lib --ro-bind-try /lib64 /lib64 \
+                --proc /proc --dev /dev /usr/bin/env true \
+            && echo "bwrap namespace + loopback OK" \
+            || { echo "::error::bubblewrap cannot start; the Linux sandbox is the scoring path"; exit 1; }
+
       # The exploits that once scored 100.00 on the held-out split without
       # reading a single transcript. None of them need a model.
       - name: Sandbox regression tests
@@ -58,6 +73,21 @@ jobs:
 
       - name: Install bubblewrap
         run: sudo apt-get update && sudo apt-get install -y bubblewrap
+
+      # GitHub's Ubuntu images set kernel.apparmor_restrict_unprivileged_userns=1,
+      # which lets bubblewrap create the namespace but then refuses the loopback
+      # setup inside it — `bwrap: loopback: Failed RTM_NEWADDR: Operation not
+      # permitted`, which is fatal and took down every sandboxed phase. Relaxing
+      # it on the runner is the documented fix and costs nothing here: the
+      # runner is ephemeral and exists to run this one job.
+      - name: Allow unprivileged user namespaces
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          bwrap --unshare-all --die-with-parent --ro-bind /usr /usr \
+                --ro-bind-try /lib /lib --ro-bind-try /lib64 /lib64 \
+                --proc /proc --dev /dev /usr/bin/env true \
+            && echo "bwrap namespace + loopback OK" \
+            || { echo "::error::bubblewrap cannot start; the Linux sandbox is the scoring path"; exit 1; }
 
       - name: Install Ollama
         run: curl -fsSL https://ollama.com/install.sh | sh
@@ -110,9 +140,11 @@ jobs:
       # Before the benchmark, because a rejected run exits non-zero — which
       # would otherwise skip this exactly when the shipped baseline is scored.
       - name: Benchmark soundness
-        env:
-          ATTEST_HELDOUT: ${{ steps.heldout.outputs.present == 'true' && format('{0}/.attest-challenge/corpus-heldout.json', env.HOME) || '' }}
-        run: python3 tools/verify.py
+        run: |
+          if [ "${{ steps.heldout.outputs.present }}" = "true" ]; then
+            export ATTEST_HELDOUT="$HOME/.attest-challenge/corpus-heldout.json"
+          fi
+          python3 tools/verify.py
 
       - name: Benchmark
         run: |
