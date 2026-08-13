@@ -1,0 +1,30 @@
+{
+  "_comment": "A COPY of what the trusted half pins, for reading without reading the harness. harness/ is the source of truth; nothing reads this file.",
+  "false_accusation_budget_rate": 0.125,
+  "rounds": 2,
+  "probes_per_round": 12,
+  "probes_per_pair": 24,
+  "decoding": {
+    "temperature": 0.7,
+    "top_p": 0.95,
+    "num_predict": 96
+  },
+  "default_served_seed": 1337,
+  "default_reference_seed": 42,
+  "sessions": [
+    1337,
+    2024,
+    7717,
+    9001
+  ],
+  "seed_derivation": "sha256 of every regular file under detector/ (memory/ and __pycache__/ excluded), first 8 hex digits",
+  "required_model_tags": [
+    "llama3.1:8b-instruct-q4_K_M",
+    "llama3.2:1b-instruct-fp16",
+    "llama3.2:1b-instruct-q4_K_M",
+    "llama3.2:1b-instruct-q8_0",
+    "qwen2.5:7b-instruct"
+  ],
+  "dev_config_digest": "daccb1a368e13fc071688b8a2835a1328b6495ee81f0ea8c19fecca8ccc27cb5",
+  "note": "The held-out corpus is not in this repository. Its tier mix mirrors dev; its pairs, session seeds and size do not."
+}
