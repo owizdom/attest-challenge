@@ -1,0 +1,198 @@
+{
+  "_comment": "Public development corpus, WITH labels. Tune against it freely; you are scored on a held-out corpus you never see.",
+  "split": "dev",
+  "counts": {
+    "pairs": 17,
+    "swap": 11,
+    "same": 6
+  },
+  "pairs": [
+    {
+      "id": "d-t1-a",
+      "tier": 1,
+      "served": "qwen2.5:7b-instruct",
+      "claimed": "llama3.2:1b-instruct-q8_0",
+      "served_seed": null,
+      "ref_seed": null,
+      "label": "swap",
+      "note": "qwen served, llama claimed",
+      "adversarial": false
+    },
+    {
+      "id": "d-t1-b",
+      "tier": 1,
+      "served": "llama3.2:1b-instruct-q8_0",
+      "claimed": "qwen2.5:7b-instruct",
+      "served_seed": null,
+      "ref_seed": null,
+      "label": "swap",
+      "note": "llama served, qwen claimed",
+      "adversarial": false
+    },
+    {
+      "id": "d-t1-c",
+      "tier": 1,
+      "served": "qwen2.5:7b-instruct",
+      "claimed": "llama3.2:1b-instruct-fp16",
+      "served_seed": null,
+      "ref_seed": null,
+      "label": "swap",
+      "note": "qwen served, llama fp16 claimed",
+      "adversarial": false
+    },
+    {
+      "id": "d-t2-a",
+      "tier": 2,
+      "served": "llama3.2:1b-instruct-q8_0",
+      "claimed": "llama3.1:8b-instruct-q4_K_M",
+      "served_seed": null,
+      "ref_seed": null,
+      "label": "swap",
+      "note": "1b served, 8b claimed",
+      "adversarial": false
+    },
+    {
+      "id": "d-t2-b",
+      "tier": 2,
+      "served": "llama3.1:8b-instruct-q4_K_M",
+      "claimed": "llama3.2:1b-instruct-q8_0",
+      "served_seed": null,
+      "ref_seed": null,
+      "label": "swap",
+      "note": "8b served, 1b claimed",
+      "adversarial": false
+    },
+    {
+      "id": "d-t2-c",
+      "tier": 2,
+      "served": "llama3.2:1b-instruct-fp16",
+      "claimed": "llama3.1:8b-instruct-q4_K_M",
+      "served_seed": null,
+      "ref_seed": null,
+      "label": "swap",
+      "note": "1b fp16 served, 8b claimed",
+      "adversarial": false
+    },
+    {
+      "id": "d-t3-a",
+      "tier": 3,
+      "served": "llama3.2:1b-instruct-q4_K_M",
+      "claimed": "llama3.2:1b-instruct-fp16",
+      "served_seed": null,
+      "ref_seed": null,
+      "label": "swap",
+      "note": "q4 served, fp16 claimed",
+      "adversarial": false
+    },
+    {
+      "id": "d-t3-b",
+      "tier": 3,
+      "served": "llama3.2:1b-instruct-fp16",
+      "claimed": "llama3.2:1b-instruct-q4_K_M",
+      "served_seed": 2024,
+      "ref_seed": null,
+      "label": "swap",
+      "note": "fp16 served, q4 claimed",
+      "adversarial": false
+    },
+    {
+      "id": "d-t4-a",
+      "tier": 4,
+      "served": "llama3.2:1b-instruct-fp16",
+      "claimed": "llama3.2:1b-instruct-q8_0",
+      "served_seed": null,
+      "ref_seed": null,
+      "label": "swap",
+      "note": "fp16 vs q8, same weights",
+      "adversarial": false
+    },
+    {
+      "id": "d-t4-b",
+      "tier": 4,
+      "served": "llama3.2:1b-instruct-q8_0",
+      "claimed": "llama3.2:1b-instruct-q4_K_M",
+      "served_seed": 2024,
+      "ref_seed": null,
+      "label": "swap",
+      "note": "q8 vs q4, one step",
+      "adversarial": false
+    },
+    {
+      "id": "d-t5-a",
+      "tier": 5,
+      "served": "llama3.2:1b-instruct-q4_K_M",
+      "claimed": "llama3.2:1b-instruct-fp16",
+      "served_seed": null,
+      "ref_seed": null,
+      "label": "swap",
+      "note": "cheap engine, honest answers to anything that looks like a probe",
+      "adversarial": true
+    },
+    {
+      "id": "d-n-a",
+      "tier": 0,
+      "served": "llama3.2:1b-instruct-q8_0",
+      "claimed": "llama3.2:1b-instruct-q8_0",
+      "served_seed": null,
+      "ref_seed": null,
+      "label": "same",
+      "note": "same weights, s1 vs ref",
+      "adversarial": false
+    },
+    {
+      "id": "d-n-b",
+      "tier": 0,
+      "served": "qwen2.5:7b-instruct",
+      "claimed": "qwen2.5:7b-instruct",
+      "served_seed": null,
+      "ref_seed": null,
+      "label": "same",
+      "note": "same weights, s1 vs ref",
+      "adversarial": false
+    },
+    {
+      "id": "d-n-c",
+      "tier": 0,
+      "served": "llama3.2:1b-instruct-q4_K_M",
+      "claimed": "llama3.2:1b-instruct-q4_K_M",
+      "served_seed": 2024,
+      "ref_seed": null,
+      "label": "same",
+      "note": "same weights, s2 vs ref",
+      "adversarial": false
+    },
+    {
+      "id": "d-n-d",
+      "tier": 0,
+      "served": "llama3.2:1b-instruct-fp16",
+      "claimed": "llama3.2:1b-instruct-fp16",
+      "served_seed": 7717,
+      "ref_seed": null,
+      "label": "same",
+      "note": "same weights, s3 vs ref",
+      "adversarial": false
+    },
+    {
+      "id": "d-n-e",
+      "tier": 0,
+      "served": "llama3.2:1b-instruct-q8_0",
+      "claimed": "llama3.2:1b-instruct-q8_0",
+      "served_seed": 2024,
+      "ref_seed": 7717,
+      "label": "same",
+      "note": "same weights, s2 vs s3",
+      "adversarial": false
+    },
+    {
+      "id": "d-n-f",
+      "tier": 0,
+      "served": "llama3.1:8b-instruct-q4_K_M",
+      "claimed": "llama3.1:8b-instruct-q4_K_M",
+      "served_seed": null,
+      "ref_seed": null,
+      "label": "same",
+      "note": "same weights, s1 vs ref",
+      "adversarial": false
+    }
+  ]
+}
