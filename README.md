@@ -117,33 +117,32 @@ a trusted score at all.
 
 ## Reference numbers
 
-The baseline in `detector/` is attest-fyi's shipped production rule, ported
-unchanged: mean `difflib` similarity across 24 probes, swap called below 0.45.
+The baseline in `detector/` measures each endpoint's self-consistency and
+subtracts it before comparing them. See `detector/memory/01-baseline.md` for how
+it got there and the two approaches that failed first.
 
-| Split | Score | TPR | Caught | False accusations | Budget | Where |
-|---|---|---|---|---|---|---|
-| heldout | **0.00, rejected** | 85.71 | 12/14 | **4** of 8 | 1 | CI, Linux, bubblewrap |
-| dev | **0.00, rejected** | 90.91 | 10/11 | **3** of 6 | 1 | macOS, sandbox-exec |
+| Split | Score | TPR | Caught | False accusations | Budget |
+|---|---|---|---|---|---|
+| heldout | **50.00** | 50.00 | 7/14 | 1 of 8 | 1 |
+| dev | **54.55** | 54.55 | 6/11 | 0 of 6 | 1 |
 
-Per tier, held-out: **t1 3/3 · t2 3/3 · t3 3/3 · t4 2/3 · t5 1/2**.
+Per tier, held-out: **t1 2/3 · t2 3/3 · t3 1/3 · t4 0/3 · t5 1/2**.
 
-The held-out row is the canonical one, because it comes from the scoring path,
-which is Linux under bubblewrap. The same detector on the same corpus scored
-78.57 on macOS. Determinism holds **per machine**, and `tools/verify.py` checks
-exactly that, but inference is not bit-identical across hardware, so a score is
-only comparable to another score from the same runner.
+For contrast, the rule this project actually ships in production, ported
+unchanged (mean `difflib` similarity, swap below 0.45), scores **0.00,
+rejected**: it catches 12 of 14 swaps and accuses **4 of 8 honest providers**
+doing it. Catching swaps is the easy half. Not accusing the innocent is the
+benchmark.
 
-Read that table twice, because it is the whole challenge. The rule finds most of
-the substitutions. It also accuses **half the honest providers**, so the run is
-rejected and it scores nothing. It is a decent swap detector and not an auditor,
-and the difference between those two things is this benchmark.
+Scores are only comparable within one machine. The same detector and corpus can
+land several points apart on different hardware, because inference is not
+bit-identical across it. `tools/verify.py` checks per-machine determinism, and
+the number CI reports is the canonical one.
 
-**Any valid run above zero beats the state of the art.** That is a low bar and a
-real one.
+### Why the obvious approach does not work
 
-### Why no threshold fixes it
-
-`python3 tools/null.py dev` measures both distributions directly:
+`python3 tools/null.py dev` measures the two distributions for a similarity
+score directly:
 
 ```
                               n     mean      min      max
@@ -164,11 +163,12 @@ therefore either misses that swap or accuses that provider. 0.45 is not a badly
 chosen constant, it is the best available value of a measurement that cannot
 work, and moving it trades one failure for the other.
 
-So the opening move is not to tune. It is to measure something else. A mean over
-24 comparisons is one number standing in for a distribution, and two sessions of
-one model disagree *uniformly* while a requantised engine agrees closely on most
-probes and diverges hard on a few. Same mean, different shape.
-`detector/memory/01-baseline.md` has the longer version and the untried leads.
+So the opening move is not to tune, it is to measure something else. What the
+current baseline measures instead: ask each question three ways, score how much
+each endpoint agrees with *itself*, and subtract that before comparing them. A
+model being bad at arithmetic then stops looking like fraud.
+`detector/memory/01-baseline.md` has the numbers, the two dead ends, and the
+untried leads.
 
 ### Scope of that finding
 
