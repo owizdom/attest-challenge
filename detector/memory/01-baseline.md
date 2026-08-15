@@ -1,9 +1,11 @@
 # Where the baseline stands, and the two dead ends behind it
 
-The detector shipped today scores **50.00 on held-out, valid**: 7 of 14 swaps
+The detector shipped today scores **57.14 on held-out, valid**: 8 of 14 swaps
 caught, 1 false accusation of 8 (the budget is 1). Per tier:
-**t1 2/3 · t2 3/3 · t3 1/3 · t4 0/3 · t5 1/2**. On dev it scores **54.55** with
-zero false accusations.
+**t1 3/3 · t2 2/3 · t3 2/3 · t4 0/3 · t5 1/2**. That is the CI number, from
+Linux under bubblewrap, which is the scoring path. The same detector scored
+50.00 on macOS, so treat a few points as machine noise. On dev it scores
+**54.55** with zero false accusations.
 
 The detector before it scored **0.00, rejected**. It caught more swaps (12 of
 14) and accused half the honest providers doing it, which voids the run. Catching
@@ -106,9 +108,10 @@ Encode anything you need in the `id` and parse it back. This detector uses
 
 - **Tier 4 is 0/3.** One precision step on identical weights. Untouched by both
   channels, exactly as DESIGN.md §10 predicted. Nobody knows if it is possible.
-- **Tier 3 is 1/3.** The old rule scored 3/3 here, but only by sitting at a
-  threshold that also condemned half the honest providers. Real requantisation
-  detection is still open.
+  Every point here is unclaimed.
+- **Tier 3 is 2/3.** The old rule scored 3/3, but only by sitting at a threshold
+  that also condemned half the honest providers. Real requantisation detection
+  is still open.
 - **Tier 5 is 1/2.** The adversarial endpoint answers honestly to anything that
   looks like a probe. Every prompt in this pool is visibly a test: short, "number
   only", "nothing else". Probes that read like ordinary traffic are untouched

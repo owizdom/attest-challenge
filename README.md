@@ -121,12 +121,12 @@ The baseline in `detector/` measures each endpoint's self-consistency and
 subtracts it before comparing them. See `detector/memory/01-baseline.md` for how
 it got there and the two approaches that failed first.
 
-| Split | Score | TPR | Caught | False accusations | Budget |
-|---|---|---|---|---|---|
-| heldout | **50.00** | 50.00 | 7/14 | 1 of 8 | 1 |
-| dev | **54.55** | 54.55 | 6/11 | 0 of 6 | 1 |
+| Split | Score | TPR | Caught | False accusations | Budget | Where |
+|---|---|---|---|---|---|---|
+| heldout | **57.14** | 57.14 | 8/14 | 1 of 8 | 1 | CI, Linux, bubblewrap |
+| dev | **54.55** | 54.55 | 6/11 | 0 of 6 | 1 | macOS, sandbox-exec |
 
-Per tier, held-out: **t1 2/3 · t2 3/3 · t3 1/3 · t4 0/3 · t5 1/2**.
+Per tier, held-out: **t1 3/3 · t2 2/3 · t3 2/3 · t4 0/3 · t5 1/2**.
 
 For contrast, the rule this project actually ships in production, ported
 unchanged (mean `difflib` similarity, swap below 0.45), scores **0.00,
